@@ -115,6 +115,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
     val summary = stringResource(R.string.horizon_kernel_summary)
     val kernelVersion = getKernelVersion()
     val isGKI = kernelVersion.isGKI()
+    val isAbDevice = isAbDevice()
 
     val onFlashComplete = {
         showRebootDialog = true
@@ -169,7 +170,7 @@ fun InstallScreen(navigator: DestinationsNavigator) {
 
     // 槽位选择
     SlotSelectionDialog(
-        show = showSlotSelectionDialog,
+        show = showSlotSelectionDialog && isAbDevice,
         onDismiss = { showSlotSelectionDialog = false },
         onSlotSelected = { slot ->
             showSlotSelectionDialog = false
@@ -240,10 +241,15 @@ fun InstallScreen(navigator: DestinationsNavigator) {
         ) {
             SelectInstallMethod(
                 isGKI = isGKI,
+                isAbDevice = isAbDevice,
                 onSelected = { method ->
-                    if (method is InstallMethod.HorizonKernel && method.uri != null && method.slot == null) {
-                        tempKernelUri = method.uri
-                        showSlotSelectionDialog = true
+                    if (method is InstallMethod.HorizonKernel && method.uri != null) {
+                        if (isAbDevice) {
+                            tempKernelUri = method.uri
+                            showSlotSelectionDialog = true
+                        } else {
+                            installMethod = method
+                        }
                     } else {
                         installMethod = method
                     }
@@ -395,10 +401,12 @@ sealed class InstallMethod {
 @Composable
 private fun SelectInstallMethod(
     isGKI: Boolean = false,
+    isAbDevice: Boolean = false,
     onSelected: (InstallMethod) -> Unit = {}
 ) {
     val rootAvailable = rootAvailable()
     val isAbDevice = isAbDevice()
+
     val horizonKernelSummary = stringResource(R.string.horizon_kernel_summary)
     val selectFileTip = stringResource(
         id = R.string.select_file_tip,
