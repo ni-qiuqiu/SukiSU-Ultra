@@ -1,5 +1,8 @@
 package com.sukisu.ultra.ui
 
+import android.annotation.SuppressLint
+import android.content.Context
+import android.content.res.Configuration
 import android.database.ContentObserver
 import android.os.Build
 import android.os.Bundle
@@ -13,8 +16,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import androidx.navigation.NavBackStackEntry
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
@@ -34,6 +37,8 @@ import com.sukisu.ultra.ui.theme.CardConfig.cardAlpha
 import com.sukisu.ultra.ui.util.*
 import androidx.core.content.edit
 import com.sukisu.ultra.ui.theme.CardConfig.cardElevation
+import com.sukisu.ultra.ui.webui.initPlatform
+import java.util.Locale
 
 class MainActivity : ComponentActivity() {
     private inner class ThemeChangeContentObserver(
@@ -46,7 +51,51 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // 应用保存的语言设置
+    @SuppressLint("ObsoleteSdkInt")
+    private fun applyLanguageSetting() {
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        val languageCode = prefs.getString("app_language", "") ?: ""
+
+        if (languageCode.isNotEmpty()) {
+            val locale = Locale.forLanguageTag(languageCode)
+            Locale.setDefault(locale)
+
+            val resources = resources
+            val config = Configuration(resources.configuration)
+            config.setLocale(locale)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                createConfigurationContext(config)
+            } else {
+                @Suppress("DEPRECATION")
+                resources.updateConfiguration(config, resources.displayMetrics)
+            }
+        }
+    }
+
+    override fun attachBaseContext(newBase: Context) {
+        val prefs = newBase.getSharedPreferences("settings", MODE_PRIVATE)
+        val languageCode = prefs.getString("app_language", "") ?: ""
+
+        var context = newBase
+        if (languageCode.isNotEmpty()) {
+            val locale = Locale.forLanguageTag(languageCode)
+            Locale.setDefault(locale)
+
+            val config = Configuration(newBase.resources.configuration)
+            config.setLocale(locale)
+            context = newBase.createConfigurationContext(config)
+        }
+
+        super.attachBaseContext(context)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
+        // 确保应用正确的语言设置
+        applyLanguageSetting()
+
+        applyCustomDpi()
+
         // Enable edge to edge
         enableEdgeToEdge()
 
@@ -104,6 +153,11 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
 
+                // pre-init platform to faster start WebUI X activities
+                LaunchedEffect(Unit) {
+                    initPlatform()
+                }
+
                 Scaffold(
                     bottomBar = { BottomBar(navController) },
                     contentWindowInsets = WindowInsets(0, 0, 0, 0)
@@ -128,10 +182,29 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    // 应用自定义DPI设置
+    private fun applyCustomDpi() {
+        val prefs = getSharedPreferences("settings", MODE_PRIVATE)
+        val customDpi = prefs.getInt("app_dpi", 0)
+
+        if (customDpi > 0) {
+            try {
+                val resources = resources
+                val metrics = resources.displayMetrics
+                metrics.density = customDpi / 160f
+                @Suppress("DEPRECATION")
+                metrics.scaledDensity = customDpi / 160f
+                metrics.densityDpi = customDpi
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     override fun onPause() {
         super.onPause()
         CardConfig.save(applicationContext)
-        getSharedPreferences("theme_prefs", MODE_PRIVATE).edit() {
+        getSharedPreferences("theme_prefs", MODE_PRIVATE).edit {
             putBoolean("prevent_background_refresh", true)
         }
         ThemeConfig.preventBackgroundRefresh = true
@@ -139,6 +212,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        applyLanguageSetting()
+
         if (!ThemeConfig.backgroundImageLoaded && !ThemeConfig.preventBackgroundRefresh) {
             loadCustomBackground()
         }
@@ -149,6 +224,11 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         destroyListeners.forEach { it() }
         super.onDestroy()
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        applyLanguageSetting()
     }
 }
 
@@ -162,6 +242,10 @@ private fun BottomBar(navController: NavHostController) {
     val containerColor = MaterialTheme.colorScheme.surfaceVariant
     val cardColor = MaterialTheme.colorScheme.surfaceVariant
 
+    // 检查是否显示KPM
+    val showKpmInfo = LocalContext.current.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        .getBoolean("show_kpm_info", true)
+
     NavigationBar(
         modifier = Modifier.windowInsetsPadding(
             WindowInsets.navigationBars.only(WindowInsetsSides.Horizontal)
@@ -174,7 +258,7 @@ private fun BottomBar(navController: NavHostController) {
     ) {
         BottomBarDestination.entries.forEach { destination ->
             if (destination == BottomBarDestination.Kpm) {
-                if (kpmVersion.isNotEmpty() && !kpmVersion.startsWith("Error")) {
+                if (kpmVersion.isNotEmpty() && !kpmVersion.startsWith("Error") && showKpmInfo) {
                     if (!fullFeatured && destination.rootRequired) return@forEach
                     val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
                     NavigationBarItem(

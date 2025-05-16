@@ -2,49 +2,64 @@
 
 **English** | [简体中文](README.md) | [日本語](README-ja.md)
 
-
 Android device root solution based on [KernelSU](https://github.com/tiann/KernelSU)
 
 **Experimental! Use at your own risk!** This solution is based on [KernelSU](https://github.com/tiann/KernelSU) and is experimental!
 
->
 > This is an unofficial fork. All rights are reserved to [@tiann](https://github.com/tiann)
-> However, we will be a separately maintained branch of KSU in the future
 >
-
-- Fully adapted for non-GKI devices (susfs-dev and unsusfs-patched dev branches only)
+> However, we will be a separately maintained branch of KSU in the future
 
 ## How to add
 
-Use the susfs-stable or susfs-dev branch (integrated susfs with support for non-GKI devices)
-
-```
-curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
-```
-
-Use the main branch
+Using main branching (non-GKI device builds are not supported)
 ```
 curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash -s main
+```
+
+Using branches that support non-GKI devices
+```
+curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 ```
 
 ## How to use integrated susfs
 
 1. Use the susfs-dev branch directly without any patching
 
+```
+curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+```
 
+## KPM Support
 
-## KPM support
-
-- We have removed duplicate KSU functions based on KernelPatch and retained KPM support.
+- Based on KernelPatch, we have removed duplicates of KSU and kept only KPM support.
 - We will introduce more APatch-compatible functions to ensure the integrity of KPM functionality.
 
+We will introduce more APatch-compatible functions to ensure the completeness of KPM functionality.
 
-Open source address: https://github.com/ShirkNeko/SukiSU_KernelPatch_patch
+KPM templates: https://github.com/udochina/KPM-Build-Anywhere
 
+> [!Note]
+> 1. `CONFIG_KPM=y` needs to be added.
+> 2. Non-GKI devices need to add `CONFIG_KALLSYMS=y` and `CONFIG_KALLSYMS_ALL=y` as well.
+> 3. Some kernel source code below `4.19` also needs to be backport from `4.19` to the header file `set_memory.h`.
 
-KPM template address: https://github.com/udochina/KPM-Build-Anywhere
+## How to do a system update to retain ROOT
+- After OTA, don't reboot first, go to the manager flashing/patching kernel interface, find `GKI/non_GKI install` and select the Anykernel3 kernel zip file that needs to be flashed, select the slot that is opposite to the current running slot of the system for flashing, and then reboot to retain the GKI mode update （This method is not supported for all non-GKI devices, so please try it yourself. It is the safest way to use TWRP for non-GKI devices.）
+- Or use LKM mode to install to the unused slot (after OTA).
+
+## Compatibility Status
+- KernelSU (versions prior to v1.0.0) officially supports Android GKI 2.0 devices (kernel 5.10+)
+
+- Older kernels (4.4+) are also compatible, but the kernel must be built manually
+
+- KernelSU can support 3.x kernels (3.4-3.18) through additional reverse ports
+
+- Currently supports `arm64-v8a`, `armeabi-v7a (bare)` and some `X86_64`
+
 
 ## More links
+
 Projects compiled based on Sukisu and susfs
 - [GKI](https://github.com/ShirkNeko/GKI_KernelSU_SUSFS) 
 - [OnePlus](https://github.com/ShirkNeko/Action_OnePlus_MKSU_SUSFS)
@@ -53,31 +68,36 @@ Projects compiled based on Sukisu and susfs
 - This method references the hook method from (https://github.com/rsuntk/KernelSU)
 
 1. **KPROBES hook:**
-    - This method only supports GKI (5.10 - 6.x) kernels, and all non-GKI kernels must use manual hooks.
-    - For Loadable Kernel Modules (LKM)
-    - Default hooking method for GKI kernels
-    - Requires `CONFIG_KPROBES=y`.
-2. **Manual hooks:**
-    - For GKI (5.10 - 6.x) kernels, add `CONFIG_KSU_MANUAL_HOOK=y` to the kernel defconfig and make sure to protect KernelSU hooks by using `#ifdef CONFIG_KSU_MANUAL_HOOK` instead of `#ifdef CONFIG_KSU`.
-    - Standard KernelSU hooks: https://kernelsu.org/guide/how-to-integrate-for-non-gki.html#manually-modify-the-kernel-source
-    - backslashxx syscall hooks: https://github.com/backslashxx/KernelSU/issues/5
-    - Some non-GKI devices that manually integrate KPROBES do not require the manual VFS hook `new_hook.patch` patch
+    - Also used for Loadable Kernel Module (LKM)
+    - Default hook method on GKI kernels.
+    - Need `CONFIG_KPROBES=y`
 
+2. **Manual hook:**
+    - Standard KernelSU hook: https://kernelsu.org/guide/how-to-integrate-for-non-gki.html#manually-modify-the-kernel-source
+    - backslashxx's syscall manual hook: https://github.com/backslashxx/KernelSU/issues/5
+    - Default hook method on Non-GKI kernels.
+    - Need `CONFIG_KSU_MANUAL_HOOK=y`
 
 ## Usage
-### GKI
-1. such as Xiaomi, Redmi, Samsung, and other devices (does not include manufacturers that modified the kernel like Meizu, OnePlus, RealMe, and OPPO)
-2. Use the prebuilt GKI kernel, the ones with their name ending with AnyKernel3, mentioned in the 'More Links' section, and then flash it with recoveries like TWRP
-3. Generally, packages with a plain .zip suffix are universal. However, if your device has a MediaTek processor, you should use the ones with .gz suffix, and packages with .lz4 suffix are dedicated to Google devices.
+
+### Universal GKI
+
+Please **all** refer to https://kernelsu.org/zh_CN/guide/installation.html
+
+> [!Note]
+> 1. for devices with GKI 2.0 such as Xiaomi, Redmi, Samsung, etc. (excludes kernel-modified manufacturers such as Meizu, OnePlus, Zenith, and oppo)
+> 2. Find the GKI build in [more links](#%E6%9B%B4%E5%A4%9A%E9%93%BE%E6%8E%A5). Find the device kernel version. Then download it and use TWRP or kernel flashing tool to flash the zip file with AnyKernel3 suffix.
+> 3. The .zip archive without suffix is uncompressed, the gz suffix is the compression used by Tenguet models.
+
 
 ### OnePlus
+
 1. Use the link mentioned in the 'More Links' section to create a customized build with your device information, and then flash the zip file with the AnyKernel3 suffix.
+
 > [!Note]
 > - You only need to fill in the first two parts of kernel versions, such as 5.10, 5.15, 6.1, or 6.6.
 > - Please search for the processor codename by yourself, usually it is all English without numbers.
 > - You can find the branch and configuration files from the OnePlus open-source kernel repository.
-
-
 
 ## Features
 
@@ -88,22 +108,18 @@ Projects compiled based on Sukisu and susfs
 5. More customization
 6. Support for KPM kernel modules
 
-
-
 ## License
 
 - The file in the “kernel” directory is under [GPL-2.0-only](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html) license.
 - All other parts except the “kernel” directory are under [GPL-3.0 or later](https://www.gnu.org/licenses/gpl-3.0.html) license.
 
 ## Sponsorship list
+
 - [Ktouls](https://github.com/Ktouls) Thanks so much for bringing me support
 - [zaoqi123](https://github.com/zaoqi123) It's not a bad idea to buy me a milk tea
 - [wswzgdg](https://github.com/wswzgdg) Many thanks for supporting this project
 - [yspbwx2010](https://github.com/yspbwx2010) Many thanks
 - [DARKWWEE](https://github.com/DARKWWEE) Thanks for the 100 USDT Lao
-
-
-
 
 If the above list does not have your name, I will update it as soon as possible, and thanks again for your support!
 

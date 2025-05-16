@@ -1,6 +1,10 @@
 package com.sukisu.ultra.ui.screen
 
+import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
+import android.content.Intent
+import android.content.res.Configuration
 import android.net.Uri
 import android.os.Build
 import android.widget.Toast
@@ -29,11 +33,14 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.NavigateNext
+import androidx.compose.material.icons.filled.AcUnit
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.ColorLens
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Opacity
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Security
@@ -81,10 +88,10 @@ import androidx.core.content.edit
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
-import com.sukisu.ultra.Natives
 import com.sukisu.ultra.R
-import com.sukisu.ultra.ksuApp
+import com.sukisu.ultra.ui.MainActivity
 import com.sukisu.ultra.ui.component.ImageEditorDialog
+import com.sukisu.ultra.ui.component.KsuIsValid
 import com.sukisu.ultra.ui.component.SwitchItem
 import com.sukisu.ultra.ui.theme.CardConfig
 import com.sukisu.ultra.ui.theme.ThemeColors
@@ -102,12 +109,14 @@ import com.sukisu.ultra.ui.util.susfsSUS_SU_Mode
 import com.topjohnwu.superuser.Shell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.Locale
 import kotlin.math.roundToInt
 
 fun saveCardConfig(context: Context) {
     CardConfig.save(context)
 }
 
+@SuppressLint("LocalContextConfigurationRead", "ObsoleteSdkInt")
 @OptIn(ExperimentalMaterial3Api::class)
 @Destination<RootGraph>
 @Composable
@@ -142,6 +151,129 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
         stringResource(R.string.theme_dark)
     )
 
+    // 获取当前语言设置
+    var currentLanguage by remember {
+        mutableStateOf(prefs.getString("app_language", "") ?: "")
+    }
+
+    // 获取支持的语言列表
+    val supportedLanguages = remember {
+        val languages = mutableListOf<Pair<String, String>>()
+        languages.add("" to context.getString(R.string.language_follow_system))
+        val locales = context.resources.configuration.locales
+        for (i in 0 until locales.size()) {
+            val locale = locales.get(i)
+            val code = locale.toLanguageTag()
+            if (!languages.any { it.first == code }) {
+                languages.add(code to locale.getDisplayName(locale))
+            }
+        }
+
+        val commonLocales = listOf(
+            Locale.forLanguageTag("en"), // 英语
+            Locale.forLanguageTag("zh-CN"), // 简体中文
+            Locale.forLanguageTag("zh-HK"), // 繁体中文(香港)
+            Locale.forLanguageTag("zh-TW"), // 繁体中文(台湾)
+            Locale.forLanguageTag("ja"), // 日语
+            Locale.forLanguageTag("fr"), // 法语
+            Locale.forLanguageTag("de"), // 德语
+            Locale.forLanguageTag("es"), // 西班牙语
+            Locale.forLanguageTag("it"), // 意大利语
+            Locale.forLanguageTag("ru"), // 俄语
+            Locale.forLanguageTag("pt"), // 葡萄牙语
+            Locale.forLanguageTag("ko"), // 韩语
+            Locale.forLanguageTag("vi")  // 越南语
+        )
+
+        for (locale in commonLocales) {
+            val code = locale.toLanguageTag()
+            if (!languages.any { it.first == code }) {
+                val config = Configuration(context.resources.configuration)
+                config.setLocale(locale)
+                try {
+                    val testContext = context.createConfigurationContext(config)
+                    testContext.getString(R.string.language_follow_system)
+                    languages.add(code to locale.getDisplayName(locale))
+                } catch (_: Exception) {
+                }
+            }
+        }
+        languages
+    }
+
+    var showLanguageDialog by remember { mutableStateOf(false) }
+
+    // 语言切换对话框
+    if (showLanguageDialog) {
+        AlertDialog(
+            onDismissRequest = { showLanguageDialog = false },
+            title = { Text(stringResource(R.string.language_setting)) },
+            text = {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                    supportedLanguages.forEach { (code, name) ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    if (currentLanguage != code) {
+                                        prefs.edit {
+                                            putString("app_language", code)
+                                            commit()
+                                        }
+
+                                        currentLanguage = code
+
+                                        Toast.makeText(
+                                            context,
+                                            context.getString(R.string.language_changed),
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+
+                                        val locale = if (code.isEmpty()) Locale.getDefault() else Locale.forLanguageTag(code)
+                                        Locale.setDefault(locale)
+                                        val config = Configuration(context.resources.configuration)
+                                        config.setLocale(locale)
+
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                                            context.createConfigurationContext(config)
+                                        } else {
+                                            @Suppress("DEPRECATION")
+                                            context.resources.updateConfiguration(config, context.resources.displayMetrics)
+                                        }
+
+                                        val intent = Intent(context, MainActivity::class.java)
+                                        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+                                        context.startActivity(intent)
+
+                                        if (context is Activity) {
+                                            context.finish()
+                                        }
+                                    }
+                                    showLanguageDialog = false
+                                }
+                                .padding(vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = currentLanguage == code,
+                                onClick = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(name)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { showLanguageDialog = false }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
     // 简洁模式开关状态
     var isSimpleMode by remember {
         mutableStateOf(prefs.getBoolean("is_simple_mode", false))
@@ -175,6 +307,17 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
         isHideOtherInfo = newValue
     }
 
+    // 显示KPM开关状态
+    var isShowKpmInfo by remember {
+        mutableStateOf(prefs.getBoolean("show_kpm_info", true))
+    }
+
+    // 更新显示KPM开关状态
+    val onShowKpmInfoChange = { newValue: Boolean ->
+        prefs.edit { putBoolean("show_kpm_info", newValue) }
+        isShowKpmInfo = newValue
+    }
+
     // 隐藏SuSFS状态开关状态
     var isHideSusfsStatus by remember {
         mutableStateOf(prefs.getBoolean("is_hide_susfs_status", false))
@@ -203,7 +346,7 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
 
     // 卡片配置状态
     var cardAlpha by rememberSaveable { mutableFloatStateOf(CardConfig.cardAlpha) }
-    var showCardSettings by remember { mutableStateOf(false) }
+    var cardDim by rememberSaveable { mutableFloatStateOf(CardConfig.cardDim) }
     var isCustomBackgroundEnabled by rememberSaveable {
         mutableStateOf(ThemeConfig.customBackgroundUri != null)
     }
@@ -216,12 +359,43 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
     var isCustomizeExpanded by remember { mutableStateOf(false) }
     var isAppearanceExpanded by remember { mutableStateOf(true) }
     var isAdvancedExpanded by remember { mutableStateOf(false) }
+    var isDpiExpanded by remember { mutableStateOf(false) }
+
+    // DPI 设置
+    val systemDpi = remember { context.resources.displayMetrics.densityDpi }
+    var currentDpi by remember {
+        mutableIntStateOf(prefs.getInt("app_dpi", systemDpi))
+    }
+    var tempDpi by remember { mutableIntStateOf(currentDpi) }
+    var isDpiCustom by remember { mutableStateOf(true) }
+    var showDpiConfirmDialog by remember { mutableStateOf(false) }
+
+    // 预设 DPI 选项
+    val dpiPresets = mapOf(
+        stringResource(R.string.dpi_size_small) to 240,
+        stringResource(R.string.dpi_size_medium) to 320,
+        stringResource(R.string.dpi_size_large) to 420,
+        stringResource(R.string.dpi_size_extra_large) to 560
+    )
+
+    // 获取DPI大小
+    @Composable
+    fun getDpiFriendlyName(dpi: Int): String {
+        return when (dpi) {
+            240 -> stringResource(R.string.dpi_size_small)
+            320 -> stringResource(R.string.dpi_size_medium)
+            420 -> stringResource(R.string.dpi_size_large)
+            560 -> stringResource(R.string.dpi_size_extra_large)
+            else -> stringResource(R.string.dpi_size_custom)
+        }
+    }
 
     // 初始化卡片配置
     LaunchedEffect(Unit) {
         // 加载设置
         CardConfig.load(context)
         cardAlpha = CardConfig.cardAlpha
+        cardDim = CardConfig.cardDim
         isCustomBackgroundEnabled = ThemeConfig.customBackgroundUri != null
 
         // 设置主题模式
@@ -252,8 +426,35 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
             CardConfig.setDarkModeDefaults()
         }
 
-        // 保存设置
+        currentDpi = prefs.getInt("app_dpi", systemDpi)
+        tempDpi = currentDpi
+
         CardConfig.save(context)
+    }
+
+    // 应用 DPI 设置
+    val applyDpiSetting = { dpi: Int ->
+        if (dpi != currentDpi) {
+            // 保存到 SharedPreferences
+            prefs.edit {
+                putInt("app_dpi", dpi)
+            }
+
+            // 只修改应用级别的DPI设置
+            currentDpi = dpi
+            tempDpi = dpi
+            Toast.makeText(
+                context,
+                context.getString(R.string.dpi_applied_success, dpi),
+                Toast.LENGTH_SHORT
+            ).show()
+
+            val restartIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)
+            restartIntent?.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+            context.startActivity(restartIntent)
+
+            showDpiConfirmDialog = false
+        }
     }
 
     // 主题色选项
@@ -268,7 +469,6 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
     )
 
     var showThemeColorDialog by remember { mutableStateOf(false) }
-    val ksuIsValid = Natives.isKsuValid(ksuApp.packageName)
 
     // 图片选择器
     val pickImageLauncher = rememberLauncherForActivityResult(
@@ -352,6 +552,38 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                     modifier = Modifier.padding(bottom = 16.dp)
                 ) {
                     Column {
+                        // 语言设置
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.language_setting)) },
+                            supportingContent = {
+                                Text(supportedLanguages.find { it.first == currentLanguage }?.second
+                                    ?: stringResource(R.string.language_follow_system))
+                            },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.Language,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingContent = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.NavigateNext,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            },
+                            colors = ListItemDefaults.colors(
+                                containerColor = Color.Transparent
+                            ),
+                            modifier = Modifier.clickable { showLanguageDialog = true }
+                        )
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+
                         // 主题模式
                         ListItem(
                             headlineContent = { Text(stringResource(R.string.theme_mode)) },
@@ -473,10 +705,13 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                                             isCustomBackgroundEnabled = false
                                             CardConfig.cardElevation
                                             CardConfig.cardAlpha = 1f
+                                            CardConfig.cardDim = 0f
                                             CardConfig.isCustomAlphaSet = false
+                                            CardConfig.isCustomDimSet = false
                                             CardConfig.isCustomBackgroundEnabled = false
                                             saveCardConfig(context)
                                             cardAlpha = 1f
+                                            cardDim = 0f
 
                                             // 重置其他相关设置
                                             ThemeConfig.needsResetOnThemeChange = true
@@ -501,22 +736,18 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                             },
                             colors = ListItemDefaults.colors(
                                 containerColor = Color.Transparent
-                            ),
-                            modifier = Modifier.clickable {
-                                if (isCustomBackgroundEnabled) {
-                                    showCardSettings = !showCardSettings
-                                }
-                            }
+                            )
                         )
 
-                        // 透明度 Slider
+                        // 透明度和亮度调节滑动条
                         AnimatedVisibility(
-                            visible = ThemeConfig.customBackgroundUri != null && showCardSettings,
+                            visible = ThemeConfig.customBackgroundUri != null,
                             enter = fadeIn() + expandVertically(),
                             exit = fadeOut() + shrinkVertically(),
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            modifier = Modifier.padding(horizontal = 32.dp)
                         ) {
                             Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                                // 透明度滑动条
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier.padding(bottom = 4.dp)
@@ -564,7 +795,164 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                                     )
                                 )
+
+                                // 亮度调节滑动条
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(top = 16.dp, bottom = 4.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Filled.LightMode,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
+                                    )
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text(
+                                        text = stringResource(R.string.settings_card_dim),
+                                        style = MaterialTheme.typography.titleSmall
+                                    )
+                                    Spacer(modifier = Modifier.weight(1f))
+                                    Text(
+                                        text = "${(cardDim * 100).roundToInt()}%",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+
+                                Slider(
+                                    value = cardDim,
+                                    onValueChange = { newValue ->
+                                        cardDim = newValue
+                                        CardConfig.cardDim = newValue
+                                        CardConfig.isCustomDimSet = true
+                                        prefs.edit {
+                                            putBoolean("is_custom_dim_set", true)
+                                            putFloat("card_dim", newValue)
+                                        }
+                                    },
+                                    onValueChangeFinished = {
+                                        coroutineScope.launch(Dispatchers.IO) {
+                                            saveCardConfig(context)
+                                        }
+                                    },
+                                    valueRange = 0f..1f,
+                                    steps = 20,
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                )
                             }
+                        }
+                    }
+                }
+            }
+
+            // DPI 设置部分
+            SectionHeader(
+                title = stringResource(R.string.dpi_settings),
+                expanded = isDpiExpanded,
+                onToggle = { isDpiExpanded = !isDpiExpanded }
+            )
+
+            AnimatedVisibility(
+                visible = isDpiExpanded,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    tonalElevation = 1.dp,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                ) {
+                    Column {
+                        ListItem(
+                            headlineContent = { Text(stringResource(R.string.app_dpi_title)) },
+                            supportingContent = { Text(stringResource(R.string.app_dpi_summary)) },
+                            leadingContent = {
+                                Icon(
+                                    Icons.Default.AcUnit,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            trailingContent = {
+                                Text(
+                                    text = getDpiFriendlyName(tempDpi),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            },
+                            colors = ListItemDefaults.colors(
+                                containerColor = Color.Transparent
+                            )
+                        )
+
+                        // DPI 滑动条
+                        Column(modifier = Modifier.padding(horizontal = 32.dp, vertical = 8.dp)) {
+                            Slider(
+                                value = tempDpi.toFloat(),
+                                onValueChange = {
+                                    tempDpi = it.toInt()
+                                    isDpiCustom = !dpiPresets.containsValue(tempDpi)
+                                },
+                                valueRange = 160f..600f,
+                                steps = 11,
+                                colors = SliderDefaults.colors(
+                                    thumbColor = MaterialTheme.colorScheme.primary,
+                                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                                )
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                            ) {
+                                dpiPresets.forEach { (name, dpi) ->
+                                    TextButton(
+                                        onClick = {
+                                            tempDpi = dpi
+                                            isDpiCustom = false
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = name,
+                                            color = if (tempDpi == dpi)
+                                                MaterialTheme.colorScheme.primary
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+
+                            TextButton(
+                                onClick = {
+                                    if (tempDpi != currentDpi) {
+                                        showDpiConfirmDialog = true
+                                    }
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp)
+                            ) {
+                                Text(stringResource(R.string.dpi_apply_settings))
+                            }
+
+                            Text(
+                                text = if (isDpiCustom)
+                                    "${stringResource(R.string.dpi_size_custom)}: $tempDpi"
+                                else
+                                    "${getDpiFriendlyName(tempDpi)}: $tempDpi",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 4.dp)
+                            )
                         }
                     }
                 }
@@ -648,6 +1036,21 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
 
+                        // 显示KPM开关
+                        SwitchItem(
+                            icon = Icons.Filled.VisibilityOff,
+                            title = stringResource(R.string.show_kpm_info),
+                            summary = stringResource(R.string.show_kpm_info_summary),
+                            checked = isShowKpmInfo
+                        ) {
+                            onShowKpmInfoChange(it)
+                        }
+
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+
                         // 隐藏链接信息
                         SwitchItem(
                             icon = Icons.Filled.VisibilityOff,
@@ -680,7 +1083,7 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                 ) {
                     Column {
                         // SELinux 开关
-                        if (ksuIsValid) {
+                        KsuIsValid {
                             SwitchItem(
                                 icon = Icons.Filled.Security,
                                 title = stringResource(R.string.selinux),
@@ -800,6 +1203,9 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                                             if (!CardConfig.isCustomAlphaSet) {
                                                 CardConfig.cardAlpha = 1f
                                             }
+                                            if (!CardConfig.isCustomDimSet) {
+                                                CardConfig.cardDim = 0.5f
+                                            }
                                             CardConfig.save(context)
                                         }
                                         1 -> { // 浅色
@@ -808,6 +1214,9 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
                                             CardConfig.isUserDarkModeEnabled = false
                                             if (!CardConfig.isCustomAlphaSet) {
                                                 CardConfig.cardAlpha = 1f
+                                            }
+                                            if (!CardConfig.isCustomDimSet) {
+                                                CardConfig.cardDim = 0f
                                             }
                                             CardConfig.save(context)
                                         }
@@ -836,6 +1245,42 @@ fun MoreSettingsScreen(navigator: DestinationsNavigator) {
             confirmButton = {
                 TextButton(
                     onClick = { showThemeModeDialog = false }
+                ) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // DPI 设置确认对话框
+    if (showDpiConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDpiConfirmDialog = false },
+            title = { Text(stringResource(R.string.dpi_confirm_title)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.dpi_confirm_message, currentDpi, tempDpi))
+                    Text(
+                        stringResource(R.string.dpi_confirm_summary),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { applyDpiSetting(tempDpi) }
+                ) {
+                    Text(stringResource(R.string.confirm))
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showDpiConfirmDialog = false
+                        tempDpi = currentDpi
+                    }
                 ) {
                     Text(stringResource(R.string.cancel))
                 }

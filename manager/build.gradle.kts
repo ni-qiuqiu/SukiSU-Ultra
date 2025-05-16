@@ -1,7 +1,6 @@
 import com.android.build.api.dsl.ApplicationDefaultConfig
 import com.android.build.api.dsl.CommonExtension
 import com.android.build.gradle.api.AndroidBasePlugin
-import java.io.ByteArrayOutputStream
 
 plugins {
     alias(libs.plugins.agp.app) apply false
@@ -18,7 +17,7 @@ cmaker {
                 "-DANDROID_STL=none",
             )
         )
-        abiFilters("arm64-v8a", "x86_64", "riscv64")
+        abiFilters("arm64-v8a", "x86_64", "armeabi-v7a")
     }
     buildTypes {
         if (it.name == "release") {
@@ -48,18 +47,6 @@ fun getGitDescribe(): String {
     }.standardOutput.asText.get().trim()
 }
 
-
-
-fun getVersionCode(): Int {
-    val commitCount = getGitCommitCount()
-    val major = 1
-    return major * 10000 + commitCount + 606
-}
-
-fun getVersionName(): String {
-    return getGitDescribe()
-}
-
 subprojects {
     plugins.withType(AndroidBasePlugin::class.java) {
         extensions.configure(CommonExtension::class.java) {
@@ -74,7 +61,7 @@ subprojects {
                     versionName = managerVersionName
                 }
                 ndk {
-                    abiFilters += listOf("arm64-v8a", "x86_64", "riscv64")
+                    abiFilters += listOf("arm64-v8a", "x86_64", "armeabi-v7a")
                 }
             }
 

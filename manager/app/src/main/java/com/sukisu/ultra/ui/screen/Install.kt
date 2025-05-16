@@ -496,7 +496,7 @@ private fun SelectInstallMethod(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
         // LKM 安装/修补
-        if (isGKI && rootAvailable) {
+        if (isGKI) {
             ElevatedCard(
                 colors = getCardColors(MaterialTheme.colorScheme.surfaceVariant),
                 elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
@@ -703,43 +703,6 @@ private fun SelectInstallMethod(
                                 }
                             }
                     }
-                }
-            }
-        }
-
-        // 没有root
-        if (!rootAvailable) {
-            ElevatedCard(
-                colors = getCardColors(MaterialTheme.colorScheme.errorContainer),
-                elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-                    .clip(MaterialTheme.shapes.large)
-                    .shadow(
-                        elevation = cardElevation,
-                        shape = MaterialTheme.shapes.large,
-                        spotColor = MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
-                    )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.AutoFixHigh,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier
-                            .padding(end = 16.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.root_require_for_install),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onErrorContainer
-                    )
                 }
             }
         }
