@@ -1,6 +1,6 @@
 # SukiSU Ultra
 
-**日本語** | [简体中文](README.md) | [English](README-en.md)
+**日本語** | [简体中文](README.md) | [English](README-en.md) | [Türkçe](README-tr.md)
 
 [KernelSU](https://github.com/tiann/KernelSU) をベースとした Android デバイスの root ソリューション
 
@@ -15,19 +15,19 @@
 
 メイン分岐の使用（GKI デバイス以外のビルドはサポートされていません。）
 ```
-curl -LSs "https://raw.githubusercontent.com/ShirkNeko/KernelSU/main/kernel/setup.sh" | bash -s main
+curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s main
 ```
 
 GKI以外のデバイスをサポートするブランチを使用する
 ```
-curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
 ```
 
 ## 統合された susfs の使い方
 
 1. パッチを当てずに susfs-dev ブランチを直接使用してください。
 ```
-curl -LSs "https://raw.githubusercontent.com/ShirkNeko/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
+curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-dev
 ```
 
 ## KPM に対応
@@ -60,7 +60,7 @@ KPM テンプレートのアドレス: https://github.com/udochina/KPM-Build-Any
 
 ## その他のリンク
 
-SukiSU と susfs をベースにコンパイルされたプロジェクトです。
+**監督に翻訳を提出する必要がある場合は、https://crowdin.com/project/SukiSU-Ultra。
 
 - [GKI](https://github.com/ShirkNeko/GKI_KernelSU_SUSFS) 
 - [OnePlus](https://github.com/ShirkNeko/Action_OnePlus_MKSU_SUSFS)

@@ -210,7 +210,7 @@
     <string name="color_orange">オレンジ</string>
     <string name="color_pink">ピンク</string>
     <string name="color_gray">グレー</string>
-    <string name="color_ivory">アイボリー</string>
+    <string name="color_yellow">イエロー</string>
     <string name="flash_option">ブラシの設定</string>
     <string name="flash_option_tip">フラッシュするファイルを選択</string>
     <string name="horizon_kernel">AnyKernel3 をインストール</string>
@@ -225,7 +225,6 @@
     <string name="batch_authorization">権限を付与</string>
     <string name="batch_cancel_authorization">撤回する</string>
     <string name="backup">バックアップ</string>
-    <string name="color_yellow">イエロー</string>
     <string name="kpm_title">KPM</string>
     <string name="kpm_empty">カーネルモジュールは現在インストールされていません</string>
     <string name="kpm_version">バージョン</string>
@@ -351,4 +350,20 @@
     <string name="language_follow_system">システムに従う</string>
     <string name="language_changed">言語の変更を適用するために再起動しています</string>
     <string name="settings_card_dim">カードの暗さを調整</string>
+    <!-- Super User Related -->
+    <string name="scroll_to_top">上詰め</string>
+    <string name="scroll_to_bottom">画面下</string>
+    <string name="scroll_to_top_description">一番上までスクロール</string>
+    <string name="scroll_to_bottom_description">下までスクロールします</string>
+    <string name="authorized">承認済み</string>
+    <string name="unauthorized">未認証</string>
+    <string name="selected">選択中</string>
+    <string name="select">オプション</string>
+    <string name="profile_umount_modules_disable">カスタムアンインストールモジュールを無効にする</string>
+    <!-- Flash related -->
+    <string name="error_code">エラーコード</string>
+    <string name="check_log">ログを確認してください</string>
+    <string name="installing_module">モジュール設置中 %1$d/%2$d</string>
+    <string name="module_failed_count">%d モジュールのインストールに失敗しました</string>
+    <string name="module_download_error">モデルのダウンロードに失敗しました</string>
 </resources>
